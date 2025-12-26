@@ -1,13 +1,11 @@
-import pytest
-
-from pytest_django.asserts import assertRedirects
-from django.test.client import Client
-
 from http import HTTPStatus
 
+import pytest
+from django.test.client import Client
 from django.urls import reverse
+from pytest_django.asserts import assertRedirects
 
-from news.models import News, Comment
+from news.models import Comment, News
 
 
 @pytest.fixture

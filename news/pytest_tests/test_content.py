@@ -1,16 +1,17 @@
-import pytest
 from datetime import datetime, timedelta
-from pytest_django.asserts import assertRedirects
+
+import pytest
 from django.test.client import Client
-
 from django.urls import reverse
+from pytest_django.asserts import assertRedirects
 
-from news.models import News, Comment
+from news.models import Comment, News
 
 
 @pytest.fixture
 def author(django_user_model):
     return django_user_model.objects.create(username='Автор')
+
 
 @pytest.fixture
 def author_client(author):
