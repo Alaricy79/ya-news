@@ -3,8 +3,6 @@ from datetime import datetime, timedelta
 from pytest_django.asserts import assertRedirects
 from django.test.client import Client
 
-from http import HTTPStatus
-
 from django.urls import reverse
 
 from news.models import News, Comment
@@ -13,6 +11,12 @@ from news.models import News, Comment
 @pytest.fixture
 def author(django_user_model):
     return django_user_model.objects.create(username='Автор')
+
+@pytest.fixture
+def author_client(author):
+    client = Client()
+    client.force_login(author)
+    return client
 
 
 @pytest.fixture
@@ -70,7 +74,7 @@ def comments(author, news):
             created=now + timedelta(days=index)
         ))
     Comment.objects.bulk_create(comments)
-    return Comment.objects.filter(news=news).order_by('-created')
+    return Comment.objects
 
 
 @pytest.mark.django_db
@@ -82,3 +86,18 @@ def test_comments_order(news):
     all_dates = [comment.created for comment in comments]
     sorted_dates = sorted(all_dates, reverse=True)
     assert all_dates == sorted_dates
+
+
+@pytest.mark.django_db
+def test_create_note_page_contains_form(news):
+    client = Client()
+    url = reverse('news:detail', args=(news.id,))
+    response = client.get(url)
+    assert 'form' not in response.context
+
+
+@pytest.mark.django_db
+def test_create_note_page_not_contains_form(news, author_client):
+    url = reverse('news:detail', args=(news.id,))
+    response = author_client.get(url)
+    assert 'form' in response.context
