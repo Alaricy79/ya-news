@@ -16,7 +16,7 @@ def author(django_user_model):
 
 
 @pytest.fixture
-def news():
+def news_list():
     today = datetime.today()
     news_list = [
         News(
@@ -30,10 +30,55 @@ def news():
 
 
 @pytest.mark.django_db
-def test_news_count(news):
+def test_news_count(news_list):
     client = Client()
     url = reverse('news:home')
     response = client.get(url)
     object_list = response.context['object_list']
     news_count = object_list.count()
     assert news_count == 10
+
+
+@pytest.mark.django_db
+def test_news_order(news_list):
+    client = Client()
+    url = reverse('news:home')
+    response = client.get(url)
+    object_list = response.context['object_list']
+    all_dates = [news.date for news in object_list]
+    sorted_dates = sorted(all_dates, reverse=True)
+    assert all_dates == sorted_dates
+
+
+@pytest.fixture
+def news():
+    return News.objects.create(
+        title='Новость c коментариями',
+        text='Просто текст новости с коментами',
+    )
+
+
+@pytest.fixture
+def comments(author, news):
+    now = datetime.now()
+    comments = []
+    for index in range(5):
+        comments.append(Comment(
+            news=news,
+            author=author,
+            text=f'some text in comment N{index}',
+            created=now + timedelta(days=index)
+        ))
+    Comment.objects.bulk_create(comments)
+    return Comment.objects.filter(news=news).order_by('-created')
+
+
+@pytest.mark.django_db
+def test_comments_order(news):
+    client = Client()
+    url = reverse('news:detail', args=(news.id,))
+    response = client.get(url).context
+    comments = response['news'].comment_set.all()
+    all_dates = [comment.created for comment in comments]
+    sorted_dates = sorted(all_dates, reverse=True)
+    assert all_dates == sorted_dates
