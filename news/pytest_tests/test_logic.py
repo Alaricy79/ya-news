@@ -1,9 +1,8 @@
 import pytest
-
+from django.test.client import Client
+from django.urls import reverse
 from pytest_django.asserts import assertRedirects
 
-from django.urls import reverse
-from django.test.client import Client
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment, News
 
@@ -17,6 +16,18 @@ def author(django_user_model):
 def author_client(author):
     client = Client()
     client.force_login(author)
+    return client
+
+
+@pytest.fixture
+def imposter(django_user_model):
+    return django_user_model.objects.create(username='Самозванец')
+
+
+@pytest.fixture
+def imposter_client(imposter):
+    client = Client()
+    client.force_login(imposter)
     return client
 
 
@@ -38,6 +49,16 @@ def form_data():
     return {
         'text': 'В отдаленных трущебах Кейптауна...',
     }
+
+
+@pytest.fixture
+def comment(news, author):
+    some_comment = Comment.objects.create(
+        news=news,
+        text='Текст комментария',
+        author=author
+    )
+    return some_comment
 
 
 @pytest.mark.django_db
@@ -73,3 +94,29 @@ def test_user_cant_use_bad_words(author_client, news):
     assert 'text' in form.errors
     assert WARNING in form.errors['text']
     assert Comment.objects.count() == 0
+
+
+def test_author_can_delete_comment(author_client, comment, form_data):
+    url = reverse('news:delete', args=(comment.id,))
+    response = author_client.post(url, data=form_data)
+    assert Comment.objects.count() == 0
+
+
+def test_author_can_edit_comment(author_client, comment, form_data):
+    url = reverse('news:edit', args=(comment.id,))
+    response = author_client.post(url, data=form_data)
+    comment.refresh_from_db()
+    assert comment.text == form_data['text']
+
+
+def test_imposter_cant_delete_comment(imposter_client, comment, form_data):
+    url = reverse('news:delete', args=(comment.id,))
+    response = imposter_client.post(url, data=form_data)
+    assert Comment.objects.count() == 1
+
+
+def test_imposter_cant_edit_comment(imposter_client, comment, form_data):
+    url = reverse('news:edit', args=(comment.id,))
+    response = imposter_client.post(url, data=form_data)
+    comment.refresh_from_db()
+    assert comment.text != form_data['text']
