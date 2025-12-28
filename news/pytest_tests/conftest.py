@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta
+
 import pytest
-from django.urls import reverse
+from django.conf import settings
 from django.test.client import Client
+from django.urls import reverse
 from django.utils import timezone
 
-from django.conf import settings
-from news.models import News, Comment
-
+from news.models import Comment, News
 
 # ───── users ─────
+
 
 @pytest.fixture
 def author(django_user_model):
@@ -33,8 +34,8 @@ def imposter_client(imposter):
     client.force_login(imposter)
     return client
 
-
 # ───── objects ─────
+
 
 @pytest.fixture
 def news():
@@ -74,14 +75,15 @@ def comments(author, news):
         Comment(
             news=news,
             author=author,
-            text=f'some text in comment N{index}'
+            text=f'some text in comment N{index}',
         )
         for index in range(5)
     ]
-    Comment.objects.bulk_create(comments)
-    for index, comment in enumerate(Comment.objects.all().order_by('id')[:5]):
+    comments = Comment.objects.bulk_create(comments)
+    for index, comment in enumerate(comments):
         comment.created = now + timedelta(days=index)
         comment.save(update_fields=['created'])
+    return comments
 
 # ───── urls ─────
 
